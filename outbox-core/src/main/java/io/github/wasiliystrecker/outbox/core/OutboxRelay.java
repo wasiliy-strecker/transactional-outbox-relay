@@ -3,9 +3,14 @@ package io.github.wasiliystrecker.outbox.core;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-/** Coordinates one bounded claim, publish, and durable transition cycle. */
+/** Coordinates bounded claim chunks, concurrent publication, and durable transitions. */
 public final class OutboxRelay {
   private final OutboxStore store;
   private final OutboxPublisher publisher;
@@ -45,46 +50,78 @@ public final class OutboxRelay {
    * @return bounded outcome counters
    */
   public RelayBatchResult runOnce(String workerId) {
-    Instant claimTime = clock.instant();
-    List<ClaimedOutboxMessage> messages =
-        store.claim(
-            new ClaimRequest(workerId, claimTime, settings.leaseDuration(), settings.batchSize()));
-    Counters counters = new Counters(messages.size());
-    for (ClaimedOutboxMessage message : messages) {
-      process(message, counters);
+    Counters counters = new Counters();
+    while (counters.claimed < settings.batchSize()) {
+      int claimSize = Math.min(settings.maxConcurrency(), settings.batchSize() - counters.claimed);
+      Instant claimTime = clock.instant();
+      List<ClaimedOutboxMessage> messages =
+          store.claim(new ClaimRequest(workerId, claimTime, settings.leaseDuration(), claimSize));
+      if (messages.size() > claimSize) {
+        throw new IllegalStateException(
+            "store returned more messages than the requested claim size");
+      }
+      if (messages.isEmpty()) {
+        break;
+      }
+      counters.claimed += messages.size();
+      processConcurrently(messages, counters);
     }
     return counters.result();
   }
 
-  private void process(ClaimedOutboxMessage message, Counters counters) {
+  private void processConcurrently(List<ClaimedOutboxMessage> messages, Counters counters) {
+    List<Callable<Outcome>> tasks = new ArrayList<>(messages.size());
+    for (ClaimedOutboxMessage message : messages) {
+      tasks.add(() -> process(message));
+    }
+    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      List<Future<Outcome>> outcomes = executor.invokeAll(tasks);
+      for (Future<Outcome> outcome : outcomes) {
+        counters.record(outcome.get());
+      }
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while processing an outbox batch", exception);
+    } catch (ExecutionException exception) {
+      rethrow(exception.getCause());
+    }
+  }
+
+  private Outcome process(ClaimedOutboxMessage message) {
     try {
       PublishReceipt receipt = publisher.publish(message);
       if (store.markPublished(message.id(), message.leaseToken(), receipt)) {
-        counters.published++;
-      } else {
-        counters.ownershipLost++;
+        return Outcome.PUBLISHED;
       }
+      return Outcome.OWNERSHIP_LOST;
     } catch (PublicationException failure) {
       Instant failedAt = clock.instant();
       FailureDetails details = failureDetails(failure, failedAt);
       if (!failure.retryable() || message.attempt() >= settings.maxAttempts()) {
         if (store.markDead(message.id(), message.leaseToken(), details)) {
-          counters.dead++;
-        } else {
-          counters.ownershipLost++;
+          return Outcome.DEAD;
         }
-        return;
+        return Outcome.OWNERSHIP_LOST;
       }
       Duration delay = retryPolicy.delay(message.id(), message.attempt());
       if (delay.isNegative()) {
         throw new IllegalStateException("retryPolicy returned a negative delay");
       }
       if (store.reschedule(message.id(), message.leaseToken(), failedAt.plus(delay), details)) {
-        counters.rescheduled++;
-      } else {
-        counters.ownershipLost++;
+        return Outcome.RESCHEDULED;
       }
+      return Outcome.OWNERSHIP_LOST;
     }
+  }
+
+  private static void rethrow(Throwable cause) {
+    if (cause instanceof RuntimeException runtimeException) {
+      throw runtimeException;
+    }
+    if (cause instanceof Error error) {
+      throw error;
+    }
+    throw new IllegalStateException("Outbox worker failed with a checked exception", cause);
   }
 
   private static FailureDetails failureDetails(PublicationException failure, Instant failedAt) {
@@ -100,18 +137,30 @@ public final class OutboxRelay {
   }
 
   private static final class Counters {
-    private final int claimed;
+    private int claimed;
     private int published;
     private int rescheduled;
     private int dead;
     private int ownershipLost;
 
-    private Counters(int claimed) {
-      this.claimed = claimed;
+    private void record(Outcome outcome) {
+      switch (outcome) {
+        case PUBLISHED -> published++;
+        case RESCHEDULED -> rescheduled++;
+        case DEAD -> dead++;
+        case OWNERSHIP_LOST -> ownershipLost++;
+      }
     }
 
     private RelayBatchResult result() {
       return new RelayBatchResult(claimed, published, rescheduled, dead, ownershipLost);
     }
+  }
+
+  private enum Outcome {
+    PUBLISHED,
+    RESCHEDULED,
+    DEAD,
+    OWNERSHIP_LOST
   }
 }

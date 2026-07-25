@@ -10,7 +10,7 @@
   <packaging>pom</packaging>
 
   <name>Transactional Outbox Relay</name>
-  <description>Reliable transactional outbox processing for Java and Spring Boot.</description>
+  <description>Reliable transactional outbox processing for Java and Spring Boot with PostgreSQL, Kafka, retries, leases, metrics, and Testcontainers.</description>
   <url>https://github.com/wasiliy-strecker/transactional-outbox-relay</url>
 
   <licenses>

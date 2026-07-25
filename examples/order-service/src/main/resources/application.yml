@@ -31,6 +31,7 @@ outbox:
     poll-interval: 250ms
     lease-duration: 30s
     max-attempts: 10
+    max-concurrency: 8
     cleanup:
       retention: 7d
       interval: 1h

@@ -156,7 +156,10 @@ public class TransactionalOutboxAutoConfiguration {
     @ConditionalOnMissingBean
     RelaySettings outboxRelaySettings(OutboxRelayProperties properties) {
       return new RelaySettings(
-          properties.batchSize(), properties.leaseDuration(), properties.maxAttempts());
+          properties.batchSize(),
+          properties.leaseDuration(),
+          properties.maxAttempts(),
+          properties.maxConcurrency());
     }
 
     @Bean

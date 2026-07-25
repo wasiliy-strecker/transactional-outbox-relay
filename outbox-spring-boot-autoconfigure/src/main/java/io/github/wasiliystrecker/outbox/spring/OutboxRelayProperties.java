@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param pollInterval fixed delay between completed polls
  * @param leaseDuration exclusive claim duration
  * @param maxAttempts terminal publication attempt
+ * @param maxConcurrency maximum concurrently leased and published messages
  * @param acknowledgementTimeout maximum Kafka acknowledgement wait
  * @param maxPayloadBytes maximum serialized event size
  * @param workerId optional stable worker name; generated when absent
@@ -25,6 +26,7 @@ public record OutboxRelayProperties(
     @DefaultValue("500ms") Duration pollInterval,
     @DefaultValue("30s") Duration leaseDuration,
     @DefaultValue("10") int maxAttempts,
+    @DefaultValue("8") int maxConcurrency,
     @DefaultValue("10s") Duration acknowledgementTimeout,
     @DefaultValue("1048576") int maxPayloadBytes,
     String workerId,
@@ -37,6 +39,7 @@ public record OutboxRelayProperties(
     positive(pollInterval, "pollInterval");
     positive(leaseDuration, "leaseDuration");
     range(maxAttempts, 1, 10_000, "maxAttempts");
+    range(maxConcurrency, 1, 256, "maxConcurrency");
     positive(acknowledgementTimeout, "acknowledgementTimeout");
     range(maxPayloadBytes, 1, 100 * 1024 * 1024, "maxPayloadBytes");
     if (workerId != null && workerId.length() > 200) {

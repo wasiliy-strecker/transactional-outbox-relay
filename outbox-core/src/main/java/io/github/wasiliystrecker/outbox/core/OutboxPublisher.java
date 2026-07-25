@@ -1,6 +1,11 @@
 package io.github.wasiliystrecker.outbox.core;
 
-/** Broker boundary used by the relay coordinator. */
+/**
+ * Broker boundary used by the relay coordinator.
+ *
+ * <p>Implementations must be thread-safe because one relay poll may publish several messages
+ * concurrently.
+ */
 @FunctionalInterface
 public interface OutboxPublisher {
   /**

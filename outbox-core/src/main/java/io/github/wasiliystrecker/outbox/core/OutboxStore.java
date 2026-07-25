@@ -4,7 +4,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/** Atomic persistence boundary used by the relay coordinator. */
+/**
+ * Atomic persistence boundary used by the relay coordinator.
+ *
+ * <p>Implementations must support concurrent transition calls from relay worker threads.
+ */
 public interface OutboxStore {
   /**
    * Claims an available bounded batch.

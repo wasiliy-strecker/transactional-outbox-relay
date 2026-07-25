@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 final class OutboxRelayTest {
@@ -104,6 +105,38 @@ final class OutboxRelayTest {
     assertThat(store.failure).isNull();
   }
 
+  @Test
+  void claimsLeaseSafeChunksAndPublishesEachChunkConcurrently() {
+    RecordingStore store = new RecordingStore(claimed(1), claimed(1), claimed(1), claimed(1));
+    AtomicInteger active = new AtomicInteger();
+    AtomicInteger maximumActive = new AtomicInteger();
+    OutboxRelay relay =
+        new OutboxRelay(
+            store,
+            message -> {
+              int current = active.incrementAndGet();
+              maximumActive.accumulateAndGet(current, Math::max);
+              try {
+                Thread.sleep(Duration.ofMillis(25));
+              } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("test publisher interrupted", exception);
+              } finally {
+                active.decrementAndGet();
+              }
+              return new PublishReceipt("orders.events", 0, 1, NOW.plusSeconds(1));
+            },
+            (id, attempt) -> Duration.ofSeconds(1),
+            new RelaySettings(4, Duration.ofSeconds(30), 5, 2),
+            Clock.fixed(NOW, ZoneOffset.UTC));
+
+    RelayBatchResult result = relay.runOnce("worker-a");
+
+    assertThat(result).isEqualTo(new RelayBatchResult(4, 4, 0, 0, 0));
+    assertThat(store.claimSizes).containsExactly(2, 2);
+    assertThat(maximumActive).hasValue(2);
+  }
+
   private static OutboxRelay relay(
       RecordingStore store, OutboxPublisher publisher, int maxAttempts) {
     return new OutboxRelay(
@@ -139,19 +172,24 @@ final class OutboxRelayTest {
 
   private static final class RecordingStore implements OutboxStore {
     private final List<ClaimedOutboxMessage> available;
-    private boolean acceptTransitions = true;
-    private PublishReceipt receipt;
-    private Instant availableAt;
-    private FailureDetails failure;
+    private final List<Integer> claimSizes = new ArrayList<>();
+    private volatile boolean acceptTransitions = true;
+    private volatile PublishReceipt receipt;
+    private volatile Instant availableAt;
+    private volatile FailureDetails failure;
 
     private RecordingStore(ClaimedOutboxMessage... available) {
       this.available = new ArrayList<>(List.of(available));
     }
 
     @Override
-    public List<ClaimedOutboxMessage> claim(ClaimRequest request) {
-      List<ClaimedOutboxMessage> result = List.copyOf(available);
-      available.clear();
+    public synchronized List<ClaimedOutboxMessage> claim(ClaimRequest request) {
+      int size = Math.min(request.batchSize(), available.size());
+      List<ClaimedOutboxMessage> result = List.copyOf(available.subList(0, size));
+      available.subList(0, size).clear();
+      if (size > 0) {
+        claimSizes.add(size);
+      }
       return result;
     }
 

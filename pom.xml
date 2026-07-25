@@ -42,6 +42,7 @@
     <module>outbox-publisher-kafka</module>
     <module>outbox-spring-boot-autoconfigure</module>
     <module>outbox-spring-boot-starter</module>
+    <module>examples/order-service</module>
   </modules>
 
   <properties>
@@ -62,6 +63,7 @@
     <javadoc-plugin.version>3.12.0</javadoc-plugin.version>
     <source-plugin.version>3.4.0</source-plugin.version>
     <spotless-plugin.version>3.8.0</spotless-plugin.version>
+    <spring-boot-plugin.version>${spring-boot.version}</spring-boot-plugin.version>
   </properties>
 
   <dependencyManagement>
@@ -189,6 +191,11 @@
               </goals>
             </execution>
           </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <version>${spring-boot-plugin.version}</version>
         </plugin>
       </plugins>
     </pluginManagement>

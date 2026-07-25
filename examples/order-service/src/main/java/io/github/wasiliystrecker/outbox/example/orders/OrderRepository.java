@@ -9,7 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
-final class OrderRepository {
+class OrderRepository {
   private final JdbcTemplate jdbcTemplate;
 
   OrderRepository(JdbcTemplate jdbcTemplate) {

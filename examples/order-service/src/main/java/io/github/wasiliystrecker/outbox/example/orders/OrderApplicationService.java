@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-final class OrderApplicationService {
+class OrderApplicationService {
   private static final String CREATED = "CREATED";
   private static final String DESTINATION = "orders.events";
 

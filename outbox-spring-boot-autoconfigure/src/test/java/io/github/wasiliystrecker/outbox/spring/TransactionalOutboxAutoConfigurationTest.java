@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.jdbc.datasource.AbstractDataSource;
@@ -22,11 +23,25 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 final class TransactionalOutboxAutoConfigurationTest {
+  private static final String DATA_SOURCE_AUTO_CONFIGURATION =
+      "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration";
+  private static final String JACKSON_AUTO_CONFIGURATION =
+      "org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration";
+
   private final ApplicationContextRunner contextRunner =
       new ApplicationContextRunner()
           .withConfiguration(AutoConfigurations.of(TransactionalOutboxAutoConfiguration.class))
           .withBean(DataSource.class, TransactionalOutboxAutoConfigurationTest::failingDataSource)
           .withBean(ObjectMapper.class, () -> JsonMapper.builder().build());
+
+  @Test
+  void runsAfterTheInfrastructureItConditionsOn() {
+    AutoConfiguration autoConfiguration =
+        TransactionalOutboxAutoConfiguration.class.getAnnotation(AutoConfiguration.class);
+
+    assertThat(autoConfiguration.afterName())
+        .containsExactly(DATA_SOURCE_AUTO_CONFIGURATION, JACKSON_AUTO_CONFIGURATION);
+  }
 
   @Test
   void configuresTransactionalWritingWhileTheRelayIsDisabled() {

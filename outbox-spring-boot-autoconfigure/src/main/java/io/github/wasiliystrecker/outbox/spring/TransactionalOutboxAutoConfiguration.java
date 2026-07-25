@@ -35,7 +35,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /** Auto-configures transactional writes and an optional PostgreSQL-to-Kafka relay worker. */
-@AutoConfiguration
+@AutoConfiguration(
+    afterName = {
+      "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration",
+      "org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration"
+    })
 @ConditionalOnClass({JdbcTemplate.class, KafkaProducer.class})
 @ConditionalOnSingleCandidate(DataSource.class)
 @EnableConfigurationProperties({OutboxRelayProperties.class, KafkaProperties.class})

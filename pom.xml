@@ -40,6 +40,8 @@
     <module>outbox-testkit</module>
     <module>outbox-store-jdbc</module>
     <module>outbox-publisher-kafka</module>
+    <module>outbox-spring-boot-autoconfigure</module>
+    <module>outbox-spring-boot-starter</module>
   </modules>
 
   <properties>
@@ -108,6 +110,16 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>outbox-publisher-kafka</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>outbox-spring-boot-autoconfigure</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>outbox-spring-boot-starter</artifactId>
         <version>${project.version}</version>
       </dependency>
     </dependencies>

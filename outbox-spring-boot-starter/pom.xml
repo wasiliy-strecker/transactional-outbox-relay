@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>io.github.wasiliy-strecker</groupId>
+    <artifactId>transactional-outbox-relay-parent</artifactId>
+    <version>0.1.0</version>
+  </parent>
+  <artifactId>outbox-spring-boot-starter</artifactId>
+  <name>Transactional Outbox Relay :: Spring Boot Starter</name>
+  <description>Spring Boot starter for PostgreSQL transactional outbox relaying to Kafka.</description>
+  <dependencies>
+    <dependency>
+      <groupId>io.github.wasiliy-strecker</groupId>
+      <artifactId>outbox-spring-boot-autoconfigure</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jackson</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-kafka</artifactId>
+    </dependency>
+  </dependencies>
+</project>

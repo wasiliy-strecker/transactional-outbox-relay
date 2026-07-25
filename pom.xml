@@ -37,6 +37,8 @@
 
   <modules>
     <module>outbox-core</module>
+    <module>outbox-testkit</module>
+    <module>outbox-store-jdbc</module>
   </modules>
 
   <properties>
@@ -90,6 +92,16 @@
       <dependency>
         <groupId>${project.groupId}</groupId>
         <artifactId>outbox-core</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>outbox-testkit</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>outbox-store-jdbc</artifactId>
         <version>${project.version}</version>
       </dependency>
     </dependencies>
